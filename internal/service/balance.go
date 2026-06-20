@@ -25,7 +25,7 @@ func (s *Service) GetBalance(ctx context.Context, userID int) (*model.BalanceRes
 func (s *Service) Withdraw(ctx context.Context, userID int, orderNumber string, sum float64) error {
 
 	if !utils.IsValidLuhn(orderNumber) {
-		return errors.New("invalid order number")
+		return ErrInvalidOrderNumber
 	}
 
 	if sum <= 0 {

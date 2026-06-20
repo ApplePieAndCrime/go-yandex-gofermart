@@ -40,8 +40,6 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ---------------------- Логин ----------------------
-
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req model.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

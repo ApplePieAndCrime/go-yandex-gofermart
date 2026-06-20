@@ -3,6 +3,10 @@ package utils
 import "strconv"
 
 func IsValidLuhn(number string) bool {
+	if len(number) < 2 {
+		return false
+	}
+
 	sum := 0
 	toggle := false
 	for i := len(number) - 1; i >= 0; i-- {

@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/middleware"
-	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/repository"
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/service"
 )
 
 func (h *Handler) UploadOrder(w http.ResponseWriter, r *http.Request) {
@@ -24,20 +24,20 @@ func (h *Handler) UploadOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	orderNumber := string(body)
 
-	isNew, err := h.services.UploadOrder(r.Context(), userID, orderNumber)
+	status, err := h.services.UploadOrder(r.Context(), userID, orderNumber)
 	if err != nil {
 		switch {
-		case err.Error() == "invalid order number":
+		case errors.Is(err, service.ErrInvalidOrderNumber):
 			http.Error(w, "invalid order number", http.StatusUnprocessableEntity)
-		case errors.Is(err, repository.ErrOrderAlreadyExists):
-			http.Error(w, "order already loaded by another user", http.StatusConflict)
+		case errors.Is(err, service.ErrOrderAlreadyExists):
+			http.Error(w, "order already uploaded by another user", http.StatusConflict)
 		default:
+			h.logger.Errorw("upload order failed", "error", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 		return
 	}
-
-	if isNew {
+	if status == service.OrderNewAccepted {
 		w.WriteHeader(http.StatusAccepted)
 	} else {
 		w.WriteHeader(http.StatusOK)
