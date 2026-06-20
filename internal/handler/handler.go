@@ -43,8 +43,8 @@ func (h Handler) InitRoutes() *chi.Mux {
 			})
 
 			r.Route("/balance", func(r chi.Router) {
-				r.Get("/", h.GetBalance)           // GET /users/balance - получение текущего баланса счёта баллов лояльности пользователя
-				r.Post("/withdrawals", h.Withdraw) // POST /users/balance/withdrawals - запрос на списание баллов с накопительного счёта в счёт оплаты нового заказа
+				r.Get("/", h.GetBalance)          // GET /users/balance - получение текущего баланса счёта баллов лояльности пользователя
+				r.Post("/withdrawal", h.Withdraw) // POST /users/balance/withdrawal - запрос на списание баллов с накопительного счёта в счёт оплаты нового заказа
 			})
 
 			r.Get("/withdrawals", h.GetWithdrawals) // GET /users/withdrawals - получение информации о выводе средств с накопительного счёта пользователем
