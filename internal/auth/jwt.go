@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"log"
 	"os"
 	"time"
 
@@ -20,7 +21,8 @@ type Claims struct {
 func InitJWT() error {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "supersecret"
+		secret = "default-secret-key"
+		log.Println("WARNING: JWT_SECRET not set, using default key (not secure)")
 	}
 	secretKey = []byte(secret)
 	return nil

@@ -12,22 +12,22 @@ import (
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req model.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request format", http.StatusBadRequest)
+		writeJSONError(w, "invalid request format", http.StatusBadRequest)
 		return
 	}
 
 	if req.Login == "" || req.Password == "" {
-		http.Error(w, "login and password are required", http.StatusBadRequest)
+		writeJSONError(w, "login and password are required", http.StatusBadRequest)
 		return
 	}
 
 	userID, token, err := h.services.RegisterUser(r.Context(), req.Login, req.Password)
 	if err != nil {
 		if errors.Is(err, repository.ErrLoginAlreadyExists) {
-			http.Error(w, "login already exists", http.StatusConflict)
+			writeJSONError(w, "login already exists", http.StatusConflict)
 			return
 		}
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -43,22 +43,22 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req model.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request format", http.StatusBadRequest)
+		writeJSONError(w, "invalid request format", http.StatusBadRequest)
 		return
 	}
 
 	if req.Login == "" || req.Password == "" {
-		http.Error(w, "login and password are required", http.StatusBadRequest)
+		writeJSONError(w, "login and password are required", http.StatusBadRequest)
 		return
 	}
 
 	userID, token, err := h.services.LoginUser(r.Context(), req.Login, req.Password)
 	if err != nil {
 		if err.Error() == "invalid credentials" {
-			http.Error(w, "invalid credentials", http.StatusUnauthorized)
+			writeJSONError(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
