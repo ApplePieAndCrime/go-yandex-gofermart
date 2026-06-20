@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  postgres_db:
+    image: postgres:16-alpine
+    container_name: go_postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: gofermart_db
+    ports:
+      - "5433:5432" # Открывает порт наружу, чтобы локальный go run мог достучаться
+    volumes:
+      - pg_data_fresh:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pg_data_fresh:

@@ -1,0 +1,36 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/model"
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/utils"
+)
+
+func (s *Service) UploadOrder(ctx context.Context, userID int, number string) (bool, error) {
+	// 1. Валидация Луна
+	if !utils.IsValidLuhn(number) {
+		return false, errors.New("invalid order number")
+	}
+
+	isNew, err := s.repo.InsertOrder(ctx, number, userID)
+	if err != nil {
+		return false, err
+	}
+	return isNew, nil
+}
+
+func (s *Service) GetUserOrders(ctx context.Context, userID int) ([]model.OrderResponse, error) {
+	orders, err := s.repo.GetUserOrders(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get orders: %w", err)
+	}
+
+	responses := make([]model.OrderResponse, len(orders))
+	for i, o := range orders {
+		responses[i] = o.ToResponse()
+	}
+	return responses, nil
+}
