@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/auth"
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/response"
 	"go.uber.org/zap"
 )
 
@@ -18,13 +19,13 @@ func Auth(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
-				writeJSONError(w, "missing authorization header", http.StatusUnauthorized)
+				response.JSONError(w, "missing authorization header", http.StatusUnauthorized)
 				return
 			}
 
 			parts := strings.Split(authHeader, " ")
 			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-				writeJSONError(w, "invalid authorization header format", http.StatusUnauthorized)
+				response.JSONError(w, "invalid authorization header format", http.StatusUnauthorized)
 				return
 			}
 			tokenString := parts[1]
@@ -32,7 +33,7 @@ func Auth(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 			userID, err := auth.ValidateToken(tokenString)
 			if err != nil {
 				logger.Debugw("invalid token", "error", err)
-				writeJSONError(w, "invalid or expired token", http.StatusUnauthorized)
+				response.JSONError(w, "invalid or expired token", http.StatusUnauthorized)
 				return
 			}
 

@@ -7,27 +7,28 @@ import (
 
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/model"
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/repository"
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/response"
 )
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req model.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, "invalid request format", http.StatusBadRequest)
+		response.JSONError(w, "invalid request format", http.StatusBadRequest)
 		return
 	}
 
 	if req.Login == "" || req.Password == "" {
-		writeJSONError(w, "login and password are required", http.StatusBadRequest)
+		response.JSONError(w, "login and password are required", http.StatusBadRequest)
 		return
 	}
 
 	userID, token, err := h.services.RegisterUser(r.Context(), req.Login, req.Password)
 	if err != nil {
 		if errors.Is(err, repository.ErrLoginAlreadyExists) {
-			writeJSONError(w, "login already exists", http.StatusConflict)
+			response.JSONError(w, "login already exists", http.StatusConflict)
 			return
 		}
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		response.JSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -43,22 +44,22 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req model.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, "invalid request format", http.StatusBadRequest)
+		response.JSONError(w, "invalid request format", http.StatusBadRequest)
 		return
 	}
 
 	if req.Login == "" || req.Password == "" {
-		writeJSONError(w, "login and password are required", http.StatusBadRequest)
+		response.JSONError(w, "login and password are required", http.StatusBadRequest)
 		return
 	}
 
 	userID, token, err := h.services.LoginUser(r.Context(), req.Login, req.Password)
 	if err != nil {
 		if err.Error() == "invalid credentials" {
-			writeJSONError(w, "invalid credentials", http.StatusUnauthorized)
+			response.JSONError(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		response.JSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 

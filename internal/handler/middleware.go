@@ -6,26 +6,27 @@ import (
 	"strings"
 
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/auth"
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/response"
 )
 
 func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			writeJSONError(w, "Unauthorized", http.StatusUnauthorized)
+			response.JSONError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			writeJSONError(w, "Invalid authorization header", http.StatusUnauthorized)
+			response.JSONError(w, "Invalid authorization header", http.StatusUnauthorized)
 			return
 		}
 		token := parts[1]
 
 		userID, err := auth.ValidateToken(token)
 		if err != nil {
-			writeJSONError(w, "Invalid or expired token", http.StatusUnauthorized)
+			response.JSONError(w, "Invalid or expired token", http.StatusUnauthorized)
 			return
 		}
 
