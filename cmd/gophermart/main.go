@@ -59,6 +59,10 @@ func main() {
 	}
 	defer pool.Close()
 
+	if err := database.CreateTables(ctx, pool); err != nil {
+		sugar.Fatalf("failed to create tables: %v", err)
+	}
+
 	repo := repository.NewRepository(pool)
 	services := service.NewService(repo, accrualAddr, sugar)
 	h := handler.NewHandler(services, sugar)
