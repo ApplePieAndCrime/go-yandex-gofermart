@@ -522,9 +522,9 @@ func TestHandler_Withdraw(t *testing.T) {
 			h := NewHandler(svc, logger)
 
 			router := chi.NewRouter()
-			router.Post("/api/user/balance/withdrawal", h.Withdraw)
+			router.Post("/api/user/balance/withdraw", h.Withdraw)
 
-			req := httptest.NewRequest(http.MethodPost, "/api/user/balance/withdrawal", bytes.NewReader([]byte(tt.body)))
+			req := httptest.NewRequest(http.MethodPost, "/api/user/balance/withdraw", bytes.NewReader([]byte(tt.body)))
 			req.Header.Set("Content-Type", "application/json")
 			ctx := context.WithValue(req.Context(), middleware.UserIDKey, tt.userID)
 			req = req.WithContext(ctx)
