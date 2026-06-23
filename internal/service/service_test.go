@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/auth"
@@ -13,14 +12,14 @@ import (
 	"go.uber.org/zap"
 )
 
-func initTestJWT(t *testing.T) {
+func initTestJWT(t *testing.T) *auth.JWTManager {
 	t.Helper()
-	if err := os.Setenv("JWT_SECRET", "test-secret"); err != nil {
+
+	jwtManager, err := auth.NewJWTManager("test-secret")
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := auth.InitJWT(); err != nil {
-		t.Fatal(err)
-	}
+	return jwtManager
 }
 
 type mockRepo struct {
@@ -112,14 +111,14 @@ func (m *mockRepo) ProcessOrderAccrual(ctx context.Context, orderNumber string, 
 }
 
 func TestService_RegisterUser_Success(t *testing.T) {
-	initTestJWT(t)
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		createUserFunc: func(ctx context.Context, login, hashed string) (int, error) {
 			return 1, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	userID, token, err := s.RegisterUser(context.Background(), "testuser", "password")
 	if err != nil {
@@ -134,14 +133,14 @@ func TestService_RegisterUser_Success(t *testing.T) {
 }
 
 func TestService_RegisterUser_DuplicateLogin(t *testing.T) {
-	initTestJWT(t)
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		createUserFunc: func(ctx context.Context, login, hashed string) (int, error) {
 			return 0, repository.ErrLoginAlreadyExists
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	_, _, err := s.RegisterUser(context.Background(), "testuser", "password")
 	if !errors.Is(err, repository.ErrLoginAlreadyExists) {
@@ -150,7 +149,7 @@ func TestService_RegisterUser_DuplicateLogin(t *testing.T) {
 }
 
 func TestService_LoginUser_Success(t *testing.T) {
-	initTestJWT(t)
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	hashed, _ := utils.HashPassword("password")
 	repo := &mockRepo{
@@ -158,7 +157,7 @@ func TestService_LoginUser_Success(t *testing.T) {
 			return &model.User{ID: 1, Login: login, PasswordHash: hashed}, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	userID, token, err := s.LoginUser(context.Background(), "testuser", "password")
 	if err != nil {
@@ -173,7 +172,7 @@ func TestService_LoginUser_Success(t *testing.T) {
 }
 
 func TestService_LoginUser_InvalidPassword(t *testing.T) {
-	initTestJWT(t)
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	hashed, _ := utils.HashPassword("password")
 	repo := &mockRepo{
@@ -181,7 +180,7 @@ func TestService_LoginUser_InvalidPassword(t *testing.T) {
 			return &model.User{ID: 1, Login: login, PasswordHash: hashed}, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	_, _, err := s.LoginUser(context.Background(), "testuser", "wrong")
 	if err == nil || err.Error() != "invalid credentials" {
@@ -190,14 +189,14 @@ func TestService_LoginUser_InvalidPassword(t *testing.T) {
 }
 
 func TestService_LoginUser_UserNotFound(t *testing.T) {
-	initTestJWT(t)
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		getUserByLoginFunc: func(ctx context.Context, login string) (*model.User, error) {
 			return nil, repository.ErrUserNotFound
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	_, _, err := s.LoginUser(context.Background(), "testuser", "password")
 	if err == nil || err.Error() != "invalid credentials" {
@@ -206,13 +205,14 @@ func TestService_LoginUser_UserNotFound(t *testing.T) {
 }
 
 func TestService_UploadOrder_Success(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		insertOrderFunc: func(ctx context.Context, number string, userID int) (bool, error) {
 			return true, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	status, err := s.UploadOrder(context.Background(), 1, "4532015112830366")
 	if err != nil {
@@ -224,13 +224,14 @@ func TestService_UploadOrder_Success(t *testing.T) {
 }
 
 func TestService_UploadOrder_AlreadyUploaded(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		insertOrderFunc: func(ctx context.Context, number string, userID int) (bool, error) {
 			return false, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	status, err := s.UploadOrder(context.Background(), 1, "4532015112830366")
 	if err != nil {
@@ -242,9 +243,10 @@ func TestService_UploadOrder_AlreadyUploaded(t *testing.T) {
 }
 
 func TestService_UploadOrder_InvalidNumber(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	_, err := s.UploadOrder(context.Background(), 1, "123456")
 	if !errors.Is(err, ErrInvalidOrderNumber) {
@@ -253,13 +255,14 @@ func TestService_UploadOrder_InvalidNumber(t *testing.T) {
 }
 
 func TestService_UploadOrder_AlreadyExistsByOther(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		insertOrderFunc: func(ctx context.Context, number string, userID int) (bool, error) {
 			return false, repository.ErrOrderAlreadyExists
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	_, err := s.UploadOrder(context.Background(), 2, "4532015112830366")
 	if !errors.Is(err, ErrOrderAlreadyExists) {
@@ -268,6 +271,7 @@ func TestService_UploadOrder_AlreadyExistsByOther(t *testing.T) {
 }
 
 func TestService_GetUserOrders_Success(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	expectedOrders := []model.Order{
 		{Number: "123", Status: "PROCESSED", Accrual: ptr(100.0)},
@@ -277,7 +281,7 @@ func TestService_GetUserOrders_Success(t *testing.T) {
 			return expectedOrders, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	orders, err := s.GetUserOrders(context.Background(), 1)
 	if err != nil {
@@ -292,13 +296,14 @@ func TestService_GetUserOrders_Success(t *testing.T) {
 }
 
 func TestService_GetUserOrders_Empty(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		getUserOrdersFunc: func(ctx context.Context, userID int) ([]model.Order, error) {
 			return []model.Order{}, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	orders, err := s.GetUserOrders(context.Background(), 1)
 	if err != nil {
@@ -310,13 +315,14 @@ func TestService_GetUserOrders_Empty(t *testing.T) {
 }
 
 func TestService_GetBalance_Success(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		getUserBalanceFunc: func(ctx context.Context, userID int) (float64, float64, error) {
 			return 150.5, 20.0, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	balance, err := s.GetBalance(context.Background(), 1)
 	if err != nil {
@@ -328,13 +334,14 @@ func TestService_GetBalance_Success(t *testing.T) {
 }
 
 func TestService_GetBalance_Error(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		getUserBalanceFunc: func(ctx context.Context, userID int) (float64, float64, error) {
 			return 0, 0, errors.New("db error")
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	_, err := s.GetBalance(context.Background(), 1)
 	if err == nil {
@@ -343,13 +350,14 @@ func TestService_GetBalance_Error(t *testing.T) {
 }
 
 func TestService_Withdraw_Success(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		withdrawFunc: func(ctx context.Context, userID int, orderNumber string, sum float64) error {
 			return nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	err := s.Withdraw(context.Background(), 1, "4532015112830366", 50.0)
 	if err != nil {
@@ -358,9 +366,10 @@ func TestService_Withdraw_Success(t *testing.T) {
 }
 
 func TestService_Withdraw_InvalidOrderNumber(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	err := s.Withdraw(context.Background(), 1, "123", 10)
 	if !errors.Is(err, ErrInvalidOrderNumber) {
@@ -369,13 +378,14 @@ func TestService_Withdraw_InvalidOrderNumber(t *testing.T) {
 }
 
 func TestService_Withdraw_InsufficientFunds(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		withdrawFunc: func(ctx context.Context, userID int, orderNumber string, sum float64) error {
 			return repository.ErrInsufficientFunds
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	err := s.Withdraw(context.Background(), 1, "4532015112830366", 100)
 	if !errors.Is(err, repository.ErrInsufficientFunds) {
@@ -384,6 +394,7 @@ func TestService_Withdraw_InsufficientFunds(t *testing.T) {
 }
 
 func TestService_GetWithdrawals_Success(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	expected := []model.Withdrawal{
 		{OrderNumber: "123", Sum: 50.0},
@@ -394,7 +405,7 @@ func TestService_GetWithdrawals_Success(t *testing.T) {
 			return expected, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	withdrawals, err := s.GetWithdrawals(context.Background(), 1)
 	if err != nil {
@@ -409,13 +420,14 @@ func TestService_GetWithdrawals_Success(t *testing.T) {
 }
 
 func TestService_GetWithdrawals_Empty(t *testing.T) {
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	repo := &mockRepo{
 		getUserWithdrawalsFunc: func(ctx context.Context, userID int) ([]model.Withdrawal, error) {
 			return []model.Withdrawal{}, nil
 		},
 	}
-	s := NewService(repo, "", logger)
+	s := NewService(repo, "", logger, jwtManager)
 
 	withdrawals, err := s.GetWithdrawals(context.Background(), 1)
 	if err != nil {

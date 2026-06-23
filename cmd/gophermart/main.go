@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	var runAddr, databaseURI, accrualAddr string
+	var runAddr, databaseURI, accrualAddr, jwtSecret string
 	flag.StringVar(&runAddr, "a", "", "адрес и порт запуска сервиса (например, localhost:8080)")
 	flag.StringVar(&databaseURI, "d", "", "строка подключения к PostgreSQL")
 	flag.StringVar(&accrualAddr, "r", "", "адрес системы расчёта начислений")
@@ -36,6 +36,9 @@ func main() {
 	if accrualAddr == "" {
 		accrualAddr = os.Getenv("ACCRUAL_SYSTEM_ADDRESS")
 	}
+	if jwtSecret == "" {
+		jwtSecret = os.Getenv("JWT_SECRET")
+	}
 
 	if runAddr == "" {
 		runAddr = "localhost:8080"
@@ -48,8 +51,9 @@ func main() {
 	defer logger.Sync()
 	sugar := logger.Sugar()
 
-	if err := auth.InitJWT(); err != nil {
-		sugar.Fatalf("JWT init failed: %v", err)
+	jwtManager, err := auth.NewJWTManager(jwtSecret)
+	if err != nil {
+		sugar.Fatalf("failed to init JWT manager: %v", err)
 	}
 
 	ctx := context.Background()
@@ -64,10 +68,10 @@ func main() {
 	}
 
 	repo := repository.NewRepository(pool)
-	services := service.NewService(repo, accrualAddr, sugar)
+	services := service.NewService(repo, accrualAddr, sugar, jwtManager)
 	h := handler.NewHandler(services, sugar)
 
-	router := h.InitRoutes()
+	router := h.InitRoutes(jwtManager)
 
 	srv := &http.Server{
 		Addr:         runAddr,

@@ -35,7 +35,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Authorization", "Bearer "+token)
 	w.WriteHeader(http.StatusOK)
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	h.JsonEncode(w, map[string]interface{}{
 		"user_id": userID,
 		"token":   token,
 	})
@@ -64,7 +64,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Authorization", "Bearer "+token)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	h.JsonEncode(w, map[string]interface{}{
 		"user_id": userID,
 		"token":   token,
 	})

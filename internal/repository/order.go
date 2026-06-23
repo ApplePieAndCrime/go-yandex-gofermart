@@ -6,39 +6,33 @@ import (
 	"fmt"
 
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/model"
-	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v5"
 )
 
 func (r *repository) InsertOrder(ctx context.Context, number string, userID int) (bool, error) {
-	existing, err := r.GetOrderByNumber(ctx, number)
-	if err != nil && !errors.Is(err, ErrOrderNotFound) {
-		return false, fmt.Errorf("insert order: check existing: %w", err)
-	}
-	if existing != nil {
-		if existing.UserID == userID {
-			return false, nil
-		}
-		return false, ErrOrderAlreadyExists
-	}
-
-	query := `INSERT INTO orders (number, user_id, status, uploaded_at, updated_at) VALUES ($1, $2, 'NEW', NOW(), NOW())`
-	_, err = r.pool.Exec(ctx, query, number, userID)
+	query := `
+        INSERT INTO orders (number, user_id, status, uploaded_at, updated_at)
+        VALUES ($1, $2, 'NEW', NOW(), NOW())
+        ON CONFLICT (number) DO NOTHING
+    `
+	cmdTag, err := r.pool.Exec(ctx, query, number, userID)
 	if err != nil {
-		// на случай гонки – повторно проверяем конфликт
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "23505" {
-			existing, err := r.GetOrderByNumber(ctx, number)
-			if err != nil {
-				return false, fmt.Errorf("insert order: conflict but can't recheck: %w", err)
-			}
-			if existing.UserID == userID {
-				return false, nil
-			}
-			return false, ErrOrderAlreadyExists
-		}
 		return false, fmt.Errorf("insert order: %w", err)
 	}
-	return true, nil
+
+	if cmdTag.RowsAffected() == 1 {
+		return true, nil
+	}
+
+	existing, err := r.GetOrderByNumber(ctx, number)
+	if err != nil {
+		return false, fmt.Errorf("check existing order: %w", err)
+	}
+
+	if existing.UserID == userID {
+		return false, nil
+	}
+	return false, ErrOrderAlreadyExists
 }
 
 func (r *repository) GetOrderByNumber(ctx context.Context, number string) (*model.Order, error) {

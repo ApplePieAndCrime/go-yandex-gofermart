@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -21,14 +20,14 @@ import (
 	"go.uber.org/zap"
 )
 
-func initTestJWT(t *testing.T) {
+func initTestJWT(t *testing.T) *auth.JWTManager {
 	t.Helper()
-	if err := os.Setenv("JWT_SECRET", "test-secret"); err != nil {
+	jwtManager, err := auth.NewJWTManager("test-secret")
+	if err != nil {
 		t.Fatal(err)
+		return nil
 	}
-	if err := auth.InitJWT(); err != nil {
-		t.Fatal(err)
-	}
+	return jwtManager
 }
 
 func ptr(f float64) *float64 {
@@ -124,7 +123,7 @@ func (m *mockRepo) ProcessOrderAccrual(ctx context.Context, orderNumber string, 
 }
 
 func TestHandler_Register(t *testing.T) {
-	initTestJWT(t)
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 
 	tests := []struct {
@@ -164,7 +163,7 @@ func TestHandler_Register(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepo{createUserFunc: tt.mockCreate}
-			svc := service.NewService(repo, "", logger)
+			svc := service.NewService(repo, "", logger, jwtManager)
 			h := NewHandler(svc, logger)
 
 			router := chi.NewRouter()
@@ -189,7 +188,7 @@ func TestHandler_Register(t *testing.T) {
 }
 
 func TestHandler_Login(t *testing.T) {
-	initTestJWT(t)
+	jwtManager := initTestJWT(t)
 	logger := zap.NewNop().Sugar()
 	hashed, _ := utils.HashPassword("password")
 
@@ -239,7 +238,7 @@ func TestHandler_Login(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepo{getUserByLoginFunc: tt.mockGetUser}
-			svc := service.NewService(repo, "", logger)
+			svc := service.NewService(repo, "", logger, jwtManager)
 			h := NewHandler(svc, logger)
 
 			router := chi.NewRouter()
@@ -313,10 +312,12 @@ func TestHandler_UploadOrder(t *testing.T) {
 		},
 	}
 
+	jwtManager := initTestJWT(t)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepo{insertOrderFunc: tt.mockInsert}
-			svc := service.NewService(repo, "", logger)
+			svc := service.NewService(repo, "", logger, jwtManager)
 			h := NewHandler(svc, logger)
 
 			router := chi.NewRouter()
@@ -376,10 +377,11 @@ func TestHandler_GetOrders(t *testing.T) {
 		},
 	}
 
+	jwtManager := initTestJWT(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepo{getUserOrdersFunc: tt.mockOrders}
-			svc := service.NewService(repo, "", logger)
+			svc := service.NewService(repo, "", logger, jwtManager)
 			h := NewHandler(svc, logger)
 
 			router := chi.NewRouter()
@@ -440,10 +442,11 @@ func TestHandler_GetBalance(t *testing.T) {
 		},
 	}
 
+	jwtManager := initTestJWT(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepo{getUserBalanceFunc: tt.mockBalance}
-			svc := service.NewService(repo, "", logger)
+			svc := service.NewService(repo, "", logger, jwtManager)
 			h := NewHandler(svc, logger)
 
 			router := chi.NewRouter()
@@ -515,10 +518,11 @@ func TestHandler_Withdraw(t *testing.T) {
 		},
 	}
 
+	jwtManager := initTestJWT(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepo{withdrawFunc: tt.mockWithdraw}
-			svc := service.NewService(repo, "", logger)
+			svc := service.NewService(repo, "", logger, jwtManager)
 			h := NewHandler(svc, logger)
 
 			router := chi.NewRouter()
@@ -579,10 +583,11 @@ func TestHandler_GetWithdrawals(t *testing.T) {
 		},
 	}
 
+	jwtManager := initTestJWT(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepo{getUserWithdrawalsFunc: tt.mockWithdraws}
-			svc := service.NewService(repo, "", logger)
+			svc := service.NewService(repo, "", logger, jwtManager)
 			h := NewHandler(svc, logger)
 
 			router := chi.NewRouter()

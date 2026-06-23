@@ -14,7 +14,7 @@ type contextKey string
 
 const UserIDKey contextKey = "userID"
 
-func Auth(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
+func Auth(jwtManager *auth.JWTManager, logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
@@ -30,7 +30,7 @@ func Auth(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 			}
 			tokenString := parts[1]
 
-			userID, err := auth.ValidateToken(tokenString)
+			userID, err := jwtManager.ValidateToken(tokenString)
 			if err != nil {
 				logger.Debugw("invalid token", "error", err)
 				response.JSONError(w, "invalid or expired token", http.StatusUnauthorized)

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/auth"
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/repository"
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/utils"
 )
@@ -24,7 +23,7 @@ func (s *Service) RegisterUser(ctx context.Context, login, password string) (int
 		return 0, "", fmt.Errorf("create user: %w", err)
 	}
 
-	token, err := auth.GenerateToken(userID)
+	token, err := s.jwt.GenerateToken(userID)
 	if err != nil {
 		return 0, "", fmt.Errorf("generate token: %w", err)
 	}
@@ -45,7 +44,7 @@ func (s *Service) LoginUser(ctx context.Context, login, password string) (int, s
 		return 0, "", errors.New("invalid credentials")
 	}
 
-	token, err := auth.GenerateToken(user.ID)
+	token, err := s.jwt.GenerateToken(user.ID)
 	if err != nil {
 		return 0, "", fmt.Errorf("generate token: %w", err)
 	}

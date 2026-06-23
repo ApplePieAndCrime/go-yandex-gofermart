@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/auth"
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/middleware"
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -22,7 +24,7 @@ func NewHandler(services *service.Service, logger *zap.SugaredLogger) *Handler {
 	}
 }
 
-func (h Handler) InitRoutes() *chi.Mux {
+func (h Handler) InitRoutes(jwtManager *auth.JWTManager) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Get("/api/ping", func(w http.ResponseWriter, r *http.Request) {
@@ -31,11 +33,12 @@ func (h Handler) InitRoutes() *chi.Mux {
 	})
 
 	r.Route("/api/user/", func(r chi.Router) {
+
 		r.Post("/login", h.Login)       // POST /users/login - регистрация пользователя
 		r.Post("/register", h.Register) // POST /users/register - аутентификация пользователя
 
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.Auth(h.logger))
+			r.Use(middleware.Auth(jwtManager, h.logger))
 
 			r.Route("/orders", func(r chi.Router) {
 				r.Post("/", h.UploadOrder) // POST /users/orders - загрузка пользователем номера заказа для расчёта
@@ -52,4 +55,11 @@ func (h Handler) InitRoutes() *chi.Mux {
 	})
 
 	return r
+}
+
+func (h Handler) JsonEncode(w http.ResponseWriter, data interface{}) {
+	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		h.logger.Errorw("failed to encode response", "error", err)
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/auth"
 	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/repository"
 	"go.uber.org/zap"
 )
@@ -28,9 +29,10 @@ type Service struct {
 	accrualAddr string
 	logger      *zap.SugaredLogger
 	httpClient  *http.Client
+	jwt         *auth.JWTManager
 }
 
-func NewService(repo repository.Repository, accrualAddr string, logger *zap.SugaredLogger) *Service {
+func NewService(repo repository.Repository, accrualAddr string, logger *zap.SugaredLogger, jwt *auth.JWTManager) *Service {
 	return &Service{
 		repo:        repo,
 		accrualAddr: accrualAddr,
@@ -38,5 +40,6 @@ func NewService(repo repository.Repository, accrualAddr string, logger *zap.Suga
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		jwt: jwt,
 	}
 }
