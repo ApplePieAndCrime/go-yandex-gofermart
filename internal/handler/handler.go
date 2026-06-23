@@ -1,0 +1,64 @@
+package handler
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/auth"
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/middleware"
+	"github.com/ApplePieAndCrime/go-yandex-gofermart/internal/service"
+	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
+)
+
+type Handler struct {
+	services *service.Service
+	logger   *zap.SugaredLogger
+}
+
+func NewHandler(services *service.Service, logger *zap.SugaredLogger) *Handler {
+	return &Handler{
+		services: services,
+		logger:   logger.With("component", "handler"),
+	}
+}
+
+func (h Handler) InitRoutes(jwtManager *auth.JWTManager) *chi.Mux {
+	r := chi.NewRouter()
+
+	r.Get("/api/ping", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, "Сервер упешно запущен")
+	})
+
+	r.Route("/api/user/", func(r chi.Router) {
+
+		r.Post("/login", h.Login)       // POST /users/login - регистрация пользователя
+		r.Post("/register", h.Register) // POST /users/register - аутентификация пользователя
+
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.Auth(jwtManager, h.logger))
+
+			r.Route("/orders", func(r chi.Router) {
+				r.Post("/", h.UploadOrder) // POST /users/orders - загрузка пользователем номера заказа для расчёта
+				r.Get("/", h.GetOrders)    // GET /users/orders - получение списка загруженных пользователем номеров заказов, статусов их обработки и информации о начислениях
+			})
+
+			r.Route("/balance", func(r chi.Router) {
+				r.Get("/", h.GetBalance)        // GET /users/balance - получение текущего баланса счёта баллов лояльности пользователя
+				r.Post("/withdraw", h.Withdraw) // POST /users/balance/withdraw - запрос на списание баллов с накопительного счёта в счёт оплаты нового заказа
+			})
+
+			r.Get("/withdrawals", h.GetWithdrawals) // GET /users/withdrawals - получение информации о выводе средств с накопительного счёта пользователем
+		})
+	})
+
+	return r
+}
+
+func (h Handler) JsonEncode(w http.ResponseWriter, data interface{}) {
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		h.logger.Errorw("failed to encode response", "error", err)
+	}
+}

@@ -4,22 +4,17 @@
 
 # Начало работы
 
-1. Склонируйте репозиторий в любую подходящую директорию на вашем компьютере.
-2. В корне репозитория выполните команду `go mod init <name>` (где `<name>` — адрес вашего репозитория на GitHub без
-   префикса `https://`) для создания модуля
+### Запуск скрипта
 
-# Обновление шаблона
+```bash
+# запустить postgres
+docker-compose up -d
 
-Чтобы иметь возможность получать обновления автотестов и других частей шаблона, выполните команду:
-
-```
-git remote add -m master template https://github.com/yandex-praktikum/go-musthave-diploma-tpl.git
+# отключить postgres
+docker-compose down -v
 ```
 
-Для обновления кода автотестов выполните команду:
-
+### Отключить postgres
+```bash
+ docker-compose down -v
 ```
-git fetch template && git checkout template/master .github
-```
-
-Затем добавьте полученные изменения в свой репозиторий.
