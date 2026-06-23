@@ -58,7 +58,6 @@ func (h Handler) InitRoutes(jwtManager *auth.JWTManager) *chi.Mux {
 }
 
 func (h Handler) JsonEncode(w http.ResponseWriter, data interface{}) {
-	json.NewEncoder(w).Encode(data)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		h.logger.Errorw("failed to encode response", "error", err)
 	}
